@@ -1,70 +1,140 @@
-import { Image, StyleSheet, Platform } from 'react-native';
-
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import { Image, StyleSheet, Platform, View, Text, Dimensions, SafeAreaView, FlatList, TouchableOpacity } from 'react-native';
+import { useColorScheme } from '@/hooks/useColorScheme';
+const { height, width } = Dimensions.get('window');
+import { useEffect, useState } from 'react';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
+import { Link, router } from 'expo-router';
 
 export default function HomeScreen() {
+  const navigation = useNavigation();
+  const colorScheme = useColorScheme();
+  const [data, setData] = useState()
+  const [favourite, setFavourite] = useState<string[]>([]);
+
+
+  useEffect(() => {
+    FetchUserData()
+    GetFavourites()
+  }, [])
+
+  const FetchUserData = async () => {
+    try {
+      const result = await fetch(`https://reqres.in/api/users?page=2`)
+      const data = await result.json()
+      setData(data.data)
+    }
+    catch (error) {
+      console.error(error)
+    }
+  }
+
+
+  type UserData = {
+    id: number;
+    first_name: string;
+    last_name: string;
+    email: string;
+    avatar: string;
+  };
+
+  const GetFavourites = async () => {
+    const storedFavorites = await AsyncStorage.getItem('favorites');
+    if (storedFavorites) {
+      setFavourite(JSON.parse(storedFavorites))
+    }
+  };
+
+
+  const ShowUserList: React.FC<{ data: UserData }> = ({ data }) => {
+
+    const [added, setAdded] = useState<number | undefined>(undefined);
+
+
+    const SaveFavouite = async (id: number) => {
+      const favarr = [...favourite]
+      const data = id.toString()
+      const result = favourite.includes(data)
+      if (result) {
+        const FiltereData = favarr.filter((item) => item !== data)
+        await AsyncStorage.setItem('favorites', JSON.stringify(FiltereData));
+        GetFavourites()
+        return
+      }
+      favarr.push(data)
+      if (favarr.length > 0) {
+        const UpdatedValue = removeDuplicates(favarr)
+        setFavourite(UpdatedValue)
+        await AsyncStorage.setItem('favorites', JSON.stringify(UpdatedValue));
+      }
+    }
+
+    useEffect(() => {
+      checkFavourite()
+    }, [data])
+
+    const checkFavourite = () => {
+      const result = favourite.includes(data.id.toString())
+      if (result === true) {
+        setAdded(data.id)
+      }
+    }
+
+    function removeDuplicates(arr: string[]): string[] {
+      const uniqueArray: string[] = [];
+      for (let i = 0; i < arr.length; i++) {
+        if (!uniqueArray.includes(arr[i])) {
+          uniqueArray.push(arr[i]);
+        }
+      }
+      return uniqueArray;
+    }
+
+    return (
+      <View style={{ marginTop: 10, height: 70, alignItems: 'center', width: width - 40, flexDirection: "row", gap: 25, }} >
+        <Image source={{ uri: data?.avatar }} style={{ height: 50, width: 50, borderRadius: 25 }} />
+        <View style={{ height: 50, justifyContent: "center", width: "60%", }} >
+          <Text style={{ color: colorScheme === 'dark' ? 'white' : 'black', fontSize: 18, fontWeight: "900" }}>
+            {data.first_name} {data.last_name}
+          </Text>
+          <Text style={{ color: colorScheme === 'dark' ? 'white' : 'black', fontSize: 15, fontWeight: "400" }}>
+            {data.email}
+          </Text>
+        </View>
+        <TouchableOpacity style={{ height: 50, justifyContent: "center", alignItems: 'center', width: 50 }} onPress={() => SaveFavouite(data.id)}>
+          {added === data.id ?
+            <MaterialIcons name="favorite" size={30} color="red" />
+            :
+            <MaterialIcons name="favorite-border" size={30} color="red" />
+          }
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({ ios: 'cmd + d', android: 'cmd + m' })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <SafeAreaView style={styles.main_view}>
+      <FlatList
+        data={data}
+        renderItem={({ item }) => <ShowUserList data={item} />}
+        keyExtractor={(item, index) => item.id}
+      />
+      <TouchableOpacity onPress={() => router.push('favourite')} style={{ backgroundColor: "blue", padding: 10, borderRadius: 12, marginTop: 20 }} >
+        <Text style={{ color: "white", fontSize: 15, fontWeight: "600" }}>
+          See Fav user List
+        </Text>
+      </TouchableOpacity>
+    </SafeAreaView >
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
+  main_view: {
+    paddingTop: Platform.OS === 'android' ? 50 : 0,
+    alignItems: 'center'
+    // backgroundColor: "red"
+  }
 });
