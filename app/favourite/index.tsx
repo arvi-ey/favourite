@@ -5,16 +5,24 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColorScheme } from '@/hooks/useColorScheme';
 const { height, width } = Dimensions.get('window');
-
+import { useNavigation } from '@react-navigation/native';
+import { useLayoutEffect } from 'react';
 
 export default function TabTwoScreen() {
     const colorScheme = useColorScheme();
     const [favourite, setFavourite] = useState<string[]>([]);
+    const navigation = useNavigation();
 
     useEffect(() => {
 
         GetFavourites()
     }, [])
+
+    useLayoutEffect(() => {
+        navigation.setOptions({
+            title: 'Favourite User',
+        });
+    }, [navigation]);
 
 
     interface User {
