@@ -122,7 +122,9 @@ export default function HomeScreen() {
         renderItem={({ item }) => <ShowUserList data={item} />}
         keyExtractor={(item, index) => item.id}
       />
-      <TouchableOpacity onPress={() => router.push(`/favourite`)} style={{ backgroundColor: "blue", padding: 10, borderRadius: 12, marginTop: 20 }} >
+      <TouchableOpacity onPress={() => router.push({
+        pathname: "/favourite",
+      })} style={{ backgroundColor: "blue", padding: 10, borderRadius: 12, marginTop: 20 }} >
         <Text style={{ color: "white", fontSize: 15, fontWeight: "600" }}>
           See Fav user List
         </Text>
